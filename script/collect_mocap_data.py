@@ -2,6 +2,7 @@ import argparse
 import csv
 import os
 from datetime import datetime
+import yaml
 
 import rclpy
 from geometry_msgs.msg import PoseStamped
@@ -9,29 +10,52 @@ from rclpy.node import Node
 
 
 class MocapDataCollector(Node):
-    def __init__(self, data_dir="data/mocap"):
+    def __init__(self, data_dir="data/mocap", config_path="config/mocap.yaml"):
         super().__init__("mocap_data_collector")
         self._data = {}
-        self._rigid_bodies = set()
+        self._rigid_bodies = {}
         self._sample_count = 0
         self._file_handles = {}
         self._csv_writers = {}
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self._data_dir = os.path.join(data_dir, f"test_{timestamp}")
+        self._config_path = config_path
 
         # Create data directory if it doesn't exist
         os.makedirs(self._data_dir, exist_ok=True)
 
-        # Subscribe to all rigid body topics
-        self.create_subscription(
-            PoseStamped, "/em1/pose", self._rigid_body_callback, 10
-        )
+        # Load rigid body configuration from YAML file
+        self._load_config()
+
+        # Subscribe to rigid body topics
+        for rigid_body, config in self._rigid_bodies.items():
+            topic = config["pose"]
+            self.create_subscription(
+                PoseStamped,
+                topic,
+                lambda msg, rb=rigid_body: self._rigid_body_callback(msg, rb),
+                10,
+            )
+            self._data[rigid_body] = []
 
         self.get_logger().info(
             f"OptiTrack data collector initialized. Saving data to: {self._data_dir}"
         )
 
-    def _rigid_body_callback(self, msg):
+    def _load_config(self):
+        """Load rigid body configuration from YAML file."""
+        with open(self._config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        # Extract rigid body configurations
+        self._rigid_bodies = {
+            str(key): value
+            for key, value in config["mocap_node"]["ros__parameters"][
+                "rigid_bodies"
+            ].items()
+        }
+
+    def _rigid_body_callback(self, msg, rigid_body):
         """Callback for processing rigid body pose messages"""
         # Store pose data
         pose_data = {
@@ -44,14 +68,13 @@ class MocapDataCollector(Node):
                 msg.pose.orientation.z,
             ],
         }
-        if "em1" not in self._data:
-            self._data["em1"] = []
-        self._data["em1"].append(pose_data)
+        if rigid_body not in self._data:
+            self._data[rigid_body] = []
+        self._data[rigid_body].append(pose_data)
         self._sample_count += 1
 
-    def _get_file_and_writer(self):
-        """Get or create the file handle and CSV writer for em1."""
-        rigid_body = "em1"
+    def _get_file_and_writer(self, rigid_body):
+        """Get or create the file handle and CSV writer for a given rigid body."""
         if rigid_body not in self._file_handles:
             filename = os.path.join(self._data_dir, f"{rigid_body}.csv")
             file_exists = os.path.exists(filename)
@@ -76,27 +99,27 @@ class MocapDataCollector(Node):
 
     def _save_to_csv(self):
         """Save collected data to CSV files, appending to existing files."""
-        rigid_body = "em1"
-        poses = self._data.get(rigid_body)
-        if not poses:
-            self.get_logger().warning(f"No data to save for {rigid_body}")
-            return
+        for rigid_body in self._rigid_bodies.keys():
+            poses = self._data.get(rigid_body)
+            if not poses:
+                self.get_logger().warning(f"No data to save for {rigid_body}")
+                continue
 
-        file_handle, csv_writer = self._get_file_and_writer()
+            _, csv_writer = self._get_file_and_writer(rigid_body)
 
-        for pose in poses:
-            csv_writer.writerow(
-                [pose["timestamp"], *pose["position"], *pose["orientation"]]
-            )
+            for pose in poses:
+                csv_writer.writerow(
+                    [pose["timestamp"], *pose["position"], *pose["orientation"]]
+                )
 
-        self._data[rigid_body].clear()
+            self._data[rigid_body].clear()
 
     def destroy_node(self):
         """Override destroy_node to close file handles."""
-        rigid_body = "em1"
-        file_handle = self._file_handles.get(rigid_body)
-        if file_handle:
-            file_handle.close()
+        for rigid_body in self._file_handles.keys():
+            file_handle = self._file_handles.get(rigid_body)
+            if file_handle:
+                file_handle.close()
         super().destroy_node()
 
 
@@ -107,10 +130,15 @@ def main(args=None):
         default="data/ground_truth",
         help="Base directory to save collected data (default: data/ground_truth)",
     )
+    parser.add_argument(
+        "--config-path",
+        default="config/mocap.yaml",
+        help="Path to the mocap configuration file (default: config/mocap.yaml)",
+    )
     args, unknown = parser.parse_known_args()
 
     rclpy.init(args=unknown)
-    collector = MocapDataCollector(data_dir=args.data_dir)
+    collector = MocapDataCollector(data_dir=args.data_dir, config_path=args.config_path)
 
     try:
         rclpy.spin(collector)
