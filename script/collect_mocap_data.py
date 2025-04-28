@@ -2,26 +2,25 @@ import argparse
 import csv
 import os
 from datetime import datetime
-import yaml
 
 import rclpy
+import yaml
 from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 
 
 class MocapDataCollector(Node):
-    def __init__(self, data_dir="data/mocap", config_path="config/mocap.yaml"):
+    def __init__(self, output_dir="data/mocap", config_path="config/mocap.yaml"):
         super().__init__("mocap_data_collector")
         self._data = {}
         self._rigid_bodies = {}
         self._sample_count = 0
         self._file_handles = {}
         self._csv_writers = {}
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self._data_dir = os.path.join(data_dir, f"test_{timestamp}")
+        self._data_dir = output_dir
         self._config_path = config_path
 
-        # Create data directory if it doesn't exist
+        # Create output directory if it doesn't exist
         os.makedirs(self._data_dir, exist_ok=True)
 
         # Load rigid body configuration from YAML file
@@ -50,9 +49,7 @@ class MocapDataCollector(Node):
         # Extract rigid body configurations
         self._rigid_bodies = {
             str(key): value
-            for key, value in config["mocap_node"]["ros__parameters"][
-                "rigid_bodies"
-            ].items()
+            for key, value in config["mocap_node"]["ros__parameters"]["rigid_bodies"].items()
         }
 
     def _rigid_body_callback(self, msg, rigid_body):
@@ -108,9 +105,7 @@ class MocapDataCollector(Node):
             _, csv_writer = self._get_file_and_writer(rigid_body)
 
             for pose in poses:
-                csv_writer.writerow(
-                    [pose["timestamp"], *pose["position"], *pose["orientation"]]
-                )
+                csv_writer.writerow([pose["timestamp"], *pose["position"], *pose["orientation"]])
 
             self._data[rigid_body].clear()
 
@@ -126,9 +121,9 @@ class MocapDataCollector(Node):
 def main(args=None):
     parser = argparse.ArgumentParser(description="OptiTrack Data Collector")
     parser.add_argument(
-        "--data-dir",
-        default="data/ground_truth",
-        help="Base directory to save collected data (default: data/ground_truth)",
+        "--output",
+        default="data/mocap",
+        help="Base directory to save collected data CSV files (default: data/mocap)",
     )
     parser.add_argument(
         "--config-path",
@@ -138,7 +133,7 @@ def main(args=None):
     args, unknown = parser.parse_known_args()
 
     rclpy.init(args=unknown)
-    collector = MocapDataCollector(data_dir=args.data_dir, config_path=args.config_path)
+    collector = MocapDataCollector(output_dir=args.output, config_path=args.config_path)
 
     try:
         rclpy.spin(collector)
