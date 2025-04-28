@@ -1,7 +1,6 @@
 import argparse
 import csv
 import os
-from datetime import datetime
 
 import rclpy
 import yaml
@@ -49,7 +48,9 @@ class MocapDataCollector(Node):
         # Extract rigid body configurations
         self._rigid_bodies = {
             str(key): value
-            for key, value in config["mocap_node"]["ros__parameters"]["rigid_bodies"].items()
+            for key, value in config["mocap_node"]["ros__parameters"][
+                "rigid_bodies"
+            ].items()
         }
 
     def _rigid_body_callback(self, msg, rigid_body):
@@ -105,7 +106,9 @@ class MocapDataCollector(Node):
             _, csv_writer = self._get_file_and_writer(rigid_body)
 
             for pose in poses:
-                csv_writer.writerow([pose["timestamp"], *pose["position"], *pose["orientation"]])
+                csv_writer.writerow(
+                    [pose["timestamp"], *pose["position"], *pose["orientation"]]
+                )
 
             self._data[rigid_body].clear()
 
