@@ -26,58 +26,28 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import os
+
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
-from launch.substitutions import LaunchConfiguration
-from launch.conditions import UnlessCondition
-from launch.actions import LogInfo, EmitEvent, RegisterEventHandler
-from launch.event_handlers import OnProcessStart
-from launch.events import Shutdown
 
 
 def generate_launch_description():
-    default_config_path = os.path.join(
-        get_package_share_directory("mocap_optitrack"), "config", "mocap.yaml"
-    )
-
-    declare_config_path_arg = DeclareLaunchArgument(
-        "config_path",
-        default_value=default_config_path,
-        description="Path to the mocap configuration file",
-    )
-
-    config_path = LaunchConfiguration("config_path")
-
-    # Check if config file exists
-    check_config = RegisterEventHandler(
-        event_handler=OnProcessStart(
-            target_action=declare_config_path_arg,
-            on_start=[
-                LogInfo(msg=f"Checking if config file exists at {config_path}"),
-                (
-                    EmitEvent(event=Shutdown(reason="Config file not found"))
-                    if UnlessCondition(
-                        f"'{config_path}' == '' and os.path.isfile('{config_path}')"
-                    )
-                    else LogInfo(msg="Config file found, proceeding...")
-                ),
-            ],
-        )
-    )
-
     return LaunchDescription(
         [
-            declare_config_path_arg,
-            check_config,
             Node(
                 package="mocap_optitrack",
                 executable="mocap_node",
                 name="mocap_node",
-                parameters=[config_path],
+                parameters=[
+                    os.path.join(
+                        get_package_share_directory("mocap_optitrack"),
+                        "config",
+                        "mocap.yaml",
+                    )
+                ],
                 output="screen",
-            ),
+            )
         ]
     )
 
