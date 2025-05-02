@@ -29,25 +29,32 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    mocap_config_arg = DeclareLaunchArgument(
+        "config",
+        default_value=os.path.join(
+            get_package_share_directory("mocap_optitrack"),
+            "config",
+            "mocap.yaml",
+        ),
+        description="Path to mocap configuration file",
+    )
+
     return LaunchDescription(
         [
+            mocap_config_arg,
             Node(
                 package="mocap_optitrack",
                 executable="mocap_node",
                 name="mocap_node",
-                parameters=[
-                    os.path.join(
-                        get_package_share_directory("mocap_optitrack"),
-                        "config",
-                        "mocap.yaml",
-                    )
-                ],
+                parameters=[LaunchConfiguration("config")],
                 output="screen",
-            )
+            ),
         ]
     )
 
