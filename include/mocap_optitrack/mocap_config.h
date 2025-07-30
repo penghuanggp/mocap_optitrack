@@ -46,7 +46,6 @@ const std::string EnableOptitrack = "optitrack_config.enable_optitrack";
 const std::string Version = "optitrack_config.version";
 const std::string RigidBodies = "rigid_bodies";
 const std::string PoseTopicName = "pose";
-const std::string Pose2dTopicName = "pose2d";
 const std::string OdomTopicName = "odom";
 const std::string EnableTfPublisher = "tf";
 const std::string ChildFrameId = "child_frame_id";
@@ -89,14 +88,12 @@ struct ServerDescription {
 struct PublisherConfiguration {
   int rigidBodyId;
   std::string poseTopicName;
-  std::string pose2dTopicName;
   std::string odomTopicName;
   std::string enableTfPublisher;
   std::string childFrameId;
   std::string parentFrameId;
 
   bool publishPose;
-  bool publishPose2d;
   bool publishOdom;
   bool publishTf;
 };

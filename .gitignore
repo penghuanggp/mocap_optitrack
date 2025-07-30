@@ -1,0 +1,27 @@
+# ROS2 specific
+build/
+install/
+log/
+
+# Python
+*.pyc
+__pycache__/
+.pytest_cache/
+*.egg-info/
+
+# C++
+*.o
+*.so
+*.a
+*.lo
+*.la
+*.d
+CMakeCache.txt
+CMakeFiles/
+.cache/
+
+# Editors/IDEs
+.vscode/
+.idea/
+*~
+*.swp

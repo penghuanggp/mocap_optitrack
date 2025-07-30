@@ -33,57 +33,54 @@
 #include <map>
 #include <memory>
 
-#include <rclcpp/rclcpp.hpp>
 #include <rclcpp/publisher.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/pose2_d.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-#include <mocap_optitrack/version.h>
 #include <mocap_optitrack/data_model.h>
 #include <mocap_optitrack/mocap_config.h>
+#include <mocap_optitrack/version.h>
 
-namespace mocap_optitrack
-{
+namespace mocap_optitrack {
 
 /// \brief Encapsulation of a RigidBody data publisher.
-class RigidBodyPublisher
-{
+class RigidBodyPublisher {
 public:
-  RigidBodyPublisher(rclcpp::Node::SharedPtr &node, 
-    Version const& natNetVersion, 
-    PublisherConfiguration const& config);
+  RigidBodyPublisher(rclcpp::Node::SharedPtr &node,
+                     Version const &natNetVersion,
+                     PublisherConfiguration const &config);
   ~RigidBodyPublisher();
-  void publish(rclcpp::Time const& time, RigidBody const&, rclcpp::Logger);
+  void publish(rclcpp::Time const &time, RigidBody const &, rclcpp::Logger);
 
 private:
   PublisherConfiguration config;
 
   Version coordinatesVersion;
 
-  double timeDifference;	//For syncing optitrack clock to ROS clock
+  double timeDifference; // For syncing optitrack clock to ROS clock
 
   tf2_ros::TransformBroadcaster tfPublisher;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr posePublisher;
-  rclcpp::Publisher<geometry_msgs::msg::Pose2D>::SharedPtr pose2dPublisher;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odomPublisher;
 };
 
 /// \brief Dispatches RigidBody data to the correct publisher.
-class RigidBodyPublishDispatcher
-{
-    typedef std::shared_ptr<RigidBodyPublisher> RigidBodyPublisherPtr;
-    typedef std::map<int,RigidBodyPublisherPtr> RigidBodyPublisherMap;
-    RigidBodyPublisherMap rigidBodyPublisherMap;
+class RigidBodyPublishDispatcher {
+  typedef std::shared_ptr<RigidBodyPublisher> RigidBodyPublisherPtr;
+  typedef std::map<int, RigidBodyPublisherPtr> RigidBodyPublisherMap;
+  RigidBodyPublisherMap rigidBodyPublisherMap;
 
 public:
-    RigidBodyPublishDispatcher(rclcpp::Node::SharedPtr &node, 
-        Version const& natNetVersion, 
-        PublisherConfigurations const& configs);
-    void publish(rclcpp::Time const& time, std::vector<RigidBody> const& rigidBodies, rclcpp::Logger logger);
+  RigidBodyPublishDispatcher(rclcpp::Node::SharedPtr &node,
+                             Version const &natNetVersion,
+                             PublisherConfigurations const &configs);
+  void publish(rclcpp::Time const &time,
+               std::vector<RigidBody> const &rigidBodies,
+               rclcpp::Logger logger);
 };
 
 } // namespace
