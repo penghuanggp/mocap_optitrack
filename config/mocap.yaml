@@ -7,14 +7,12 @@ mocap_node:
         rigid_bodies:
             6:
                 pose: "ph1/pose"
-                pose2d: "ph1/ground_pose"
                 odom: ph1/Odom
                 tf: tf
                 child_frame_id: "ph1/base_link"
                 parent_frame_id: "world"
             7:
                 pose: "ph2/pose"
-                pose2d: "ph2/ground_pose"
                 odom: ph2/Odom
                 tf: tf
                 child_frame_id: "ph2/base_link"
