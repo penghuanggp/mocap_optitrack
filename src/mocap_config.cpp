@@ -38,11 +38,15 @@ const int ServerDescription::Default::DataPort = 9001;
 const std::string ServerDescription::Default::MulticastIpAddress =
     "224.0.0.251";
 const bool ServerDescription::Default::EnableOptitrack = true;
+const bool ServerDescription::Default::EnableMarkers = false;
+const std::string ServerDescription::Default::MarkersTopic = "markers";
 
 ServerDescription::ServerDescription()
     : commandPort(ServerDescription::Default::CommandPort),
       dataPort(ServerDescription::Default::DataPort),
-      multicastIpAddress(ServerDescription::Default::MulticastIpAddress) {}
+      multicastIpAddress(ServerDescription::Default::MulticastIpAddress),
+      enableMarkers(ServerDescription::Default::EnableMarkers),
+      markersTopic(ServerDescription::Default::MarkersTopic) {}
 
 void NodeConfiguration::fromRosParam(rclcpp::Node::SharedPtr &node,
                                      ServerDescription &serverDescription,
@@ -71,6 +75,22 @@ void NodeConfiguration::fromRosParam(rclcpp::Node::SharedPtr &node,
     RCLCPP_WARN(node->get_logger(),
                 "Could not get enable optitrack, using default: %d",
                 serverDescription.enableOptitrack);
+  }
+
+  if (!node->get_parameter_or(rosparam::keys::EnableMarkers,
+                              serverDescription.enableMarkers,
+                              ServerDescription::Default::EnableMarkers)) {
+    RCLCPP_WARN(node->get_logger(),
+                "Could not get enable markers, using default: %d",
+                serverDescription.enableMarkers);
+  }
+
+  if (!node->get_parameter_or(rosparam::keys::MarkersTopic,
+                              serverDescription.markersTopic,
+                              ServerDescription::Default::MarkersTopic)) {
+    RCLCPP_WARN(node->get_logger(),
+                "Could not get markers topic, using default: %s",
+                serverDescription.markersTopic.c_str());
   }
 
   if (!node->get_parameter_or(rosparam::keys::DataPort,
