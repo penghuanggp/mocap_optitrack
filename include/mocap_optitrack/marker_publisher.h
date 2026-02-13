@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2018, Houston Mechatronics Inc., JD Yamokoski
- * Copyright (c) 2012, Clearpath Robotics, Inc., Alex Bencz
+ * Copyright (c) 2026, Peng Huang
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +26,67 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __MOCAP_OPTITRACK_RIGID_BODY_PUBLISHER_H__
-#define __MOCAP_OPTITRACK_RIGID_BODY_PUBLISHER_H__
+#ifndef MOCAP_OPTITRACK_MARKER_PUBLISHER_H
+#define MOCAP_OPTITRACK_MARKER_PUBLISHER_H
 
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
-#include <tf2_ros/transform_broadcaster.h>
 
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 
 #include <mocap_optitrack/data_model.h>
-#include <mocap_optitrack/mocap_config.h>
-#include <mocap_optitrack/version.h>
 
 namespace mocap_optitrack {
 
-/// \brief Encapsulation of a RigidBody data publisher.
-class RigidBodyPublisher {
+/// \brief Encapsulation of a single marker data publisher.
+class MarkerPublisher {
 public:
-  RigidBodyPublisher(rclcpp::Node::SharedPtr &node,
-                     Version const &natNetVersion,
-                     PublisherConfiguration const &config);
-  ~RigidBodyPublisher();
-  void publish(rclcpp::Time const &time, RigidBody const &, rclcpp::Logger);
+  MarkerPublisher(rclcpp::Node::SharedPtr &node, int markerId,
+                  std::string const &topicName);
+  ~MarkerPublisher();
+  void publish(rclcpp::Time const &time, LabeledMarker const &marker,
+               rclcpp::Logger logger);
 
 private:
-  PublisherConfiguration config;
-
-  Version coordinatesVersion;
-
-  double timeDifference; // For syncing optitrack clock to ROS clock
-
-  tf2_ros::TransformBroadcaster tfPublisher;
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr posePublisher;
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odomPublisher;
+  int markerId;
+  rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher;
 };
 
-/// \brief Dispatches RigidBody data to the correct publisher.
-class RigidBodyPublishDispatcher {
-  typedef std::shared_ptr<RigidBodyPublisher> RigidBodyPublisherPtr;
-  typedef std::map<int, RigidBodyPublisherPtr> RigidBodyPublisherMap;
-  RigidBodyPublisherMap rigidBodyPublisherMap;
+/// \brief Dispatches marker data to the correct publisher.
+/// Dynamically creates publishers for new marker IDs and removes stale ones.
+class MarkerPublishDispatcher {
+  typedef std::shared_ptr<MarkerPublisher> MarkerPublisherPtr;
+  typedef std::map<int, MarkerPublisherPtr> MarkerPublisherMap;
+  typedef std::map<int, int> MissedFrameCountMap;
+
+  static constexpr int STALE_GRACE_FRAMES =
+      5; // Frames before removing stale publisher
+
+  MarkerPublisherMap markerPublisherMap;
+  MissedFrameCountMap missedFrameCount;
+  std::set<int> seenMarkerIds; // Track markers seen in current frame
 
 public:
-  RigidBodyPublishDispatcher(rclcpp::Node::SharedPtr &node,
-                             Version const &natNetVersion,
-                             PublisherConfigurations const &configs);
+  MarkerPublishDispatcher(rclcpp::Node::SharedPtr &node,
+                          std::string const &topicBaseName);
   void publish(rclcpp::Time const &time,
-               std::vector<RigidBody> const &rigidBodies,
+               std::vector<LabeledMarker> const &markers,
                rclcpp::Logger logger);
+  /// \brief Remove publishers for markers not seen for STALE_GRACE_FRAMES
+  void removeStalePublishers(rclcpp::Logger logger);
+
+private:
+  rclcpp::Node::SharedPtr node;
+  std::string topicBaseName;
 };
 
 } // namespace mocap_optitrack
 
-#endif
+#endif // MOCAP_OPTITRACK_MARKER_PUBLISHER_H

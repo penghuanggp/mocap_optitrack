@@ -22,4 +22,6 @@ mocap_node:
                 command_port: 1510
                 data_port: 1511
                 enable_optitrack: true
+                enable_markers: true
+                markers_topic: "markers"
                 version: [4, 0, 0, 0]

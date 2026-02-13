@@ -56,6 +56,8 @@ const std::string QosOverrideHistory = "qos_overrides./tf.publisher.history";
 const std::string QosOverrideDepth = "qos_overrides./tf.publisher.depth";
 const std::string QosOverrideReliability =
     "qos_overrides./tf.publisher.reliability";
+const std::string EnableMarkers = "optitrack_config.enable_markers";
+const std::string MarkersTopic = "optitrack_config.markers_topic";
 } // namespace keys
 } // namespace rosparam
 
@@ -70,6 +72,8 @@ struct ServerDescription {
     static const std::string QosOverrideHistory;
     static const int QosOverrideDepth;
     static const std::string QosOverrideReliability;
+    static const bool EnableMarkers;
+    static const std::string MarkersTopic;
   };
 
   ServerDescription();
@@ -82,6 +86,8 @@ struct ServerDescription {
   std::string QosOverrideHistory;
   int QosOverrideDepth;
   std::string QosOverrideReliability;
+  bool enableMarkers;
+  std::string markersTopic;
 };
 
 /// \brief ROS publisher configuration

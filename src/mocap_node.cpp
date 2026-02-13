@@ -30,6 +30,7 @@
 // Local includes
 #include "natnet/natnet_messages.h"
 #include <mocap_optitrack/data_model.h>
+#include <mocap_optitrack/marker_publisher.h>
 #include <mocap_optitrack/mocap_config.h>
 #include <mocap_optitrack/rigid_body_publisher.h>
 #include <mocap_optitrack/socket.h>
@@ -82,6 +83,17 @@ public:
       // Once we have the server info, create publishers
       publishDispatcherPtr.reset(new RigidBodyPublishDispatcher(
           node, dataModel.getNatNetVersion(), publisherConfigurations));
+
+      if (serverDescription.enableMarkers) {
+        RCLCPP_INFO(node->get_logger(),
+                    "Marker publishing enabled on topic base: %s",
+                    serverDescription.markersTopic.c_str());
+        markerPublishDispatcherPtr.reset(
+            new MarkerPublishDispatcher(node, serverDescription.markersTopic));
+      } else {
+        RCLCPP_INFO(node->get_logger(), "Marker publishing disabled");
+      }
+
       RCLCPP_INFO(node->get_logger(), "Initialization complete");
       initialized = true;
     } else {
@@ -99,6 +111,30 @@ public:
           const rclcpp::Time time = clock->now();
           publishDispatcherPtr->publish(time, dataModel.dataFrame.rigidBodies,
                                         node->get_logger());
+
+          if (serverDescription.enableMarkers && markerPublishDispatcherPtr) {
+            markerPublishDispatcherPtr->publish(
+                time, dataModel.dataFrame.labeledMarkers, node->get_logger());
+            // Also publish unlabeled markers if any
+            if (!dataModel.dataFrame.otherMarkers.empty()) {
+              std::vector<LabeledMarker> unlabeledAsLabeled;
+              int idx = 0;
+              for (const auto &m : dataModel.dataFrame.otherMarkers) {
+                LabeledMarker lm;
+                lm.id = 10000 + idx++; // Artificial ID range for unlabeled
+                                       // (high range to avoid collision)
+                lm.x = m.x;
+                lm.y = m.y;
+                lm.z = m.z;
+                lm.size = 0.01; // Default size
+                lm.occluded = false;
+                lm.active = true;
+                unlabeledAsLabeled.push_back(lm);
+              }
+              markerPublishDispatcherPtr->publish(time, unlabeledAsLabeled,
+                                                  node->get_logger());
+            }
+          }
 
           // Clear out the model to prepare for the next frame of data
           dataModel.clear();
@@ -158,6 +194,10 @@ private:
         serverDescription.multicastIpAddress = param.as_string();
       } else if (!param.get_name().compare(rosparam::keys::EnableOptitrack)) {
         serverDescription.enableOptitrack = param.as_bool();
+      } else if (!param.get_name().compare(rosparam::keys::EnableMarkers)) {
+        serverDescription.enableMarkers = param.as_bool();
+      } else if (!param.get_name().compare(rosparam::keys::MarkersTopic)) {
+        serverDescription.markersTopic = param.as_string();
       }
       // In ROS humble qos is added as parameter, these lines add this to catch
       // the exception, but overriding QOS is not implemented
@@ -190,6 +230,7 @@ private:
   DataModel dataModel;
   std::unique_ptr<UdpMulticastSocket> multicastClientSocketPtr;
   std::unique_ptr<RigidBodyPublishDispatcher> publishDispatcherPtr;
+  std::unique_ptr<MarkerPublishDispatcher> markerPublishDispatcherPtr;
   bool initialized = false;
 
   rclcpp::Node::OnSetParametersCallbackHandle::SharedPtr m_param_callback;
